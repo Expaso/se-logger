@@ -2,7 +2,7 @@
 #xpylint: disable=no-member
 
 #
-# Copyright (C) 2019 Jerrythafast
+# Copyright (C) 2020 Jerrythafast
 #
 # This file is part of se-logger, which captures telemetry data from
 # the TCP traffic of SolarEdge PV inverters.
@@ -25,7 +25,7 @@ import struct, sys, MySQLdb, time
 from collections import namedtuple
 from config import db_user, db_pass, db_name, db_host, db_port, inverter_private_key
 
-__version__ = "0.0.15"
+__version__ = "0.0.16"
 
 #############################################################################################
 
@@ -205,7 +205,7 @@ class SEParser:
         elif state == 8:
           # Reading message checksum.
           if len(data) == 20 + length + 2:
-            data = byterray(data)
+            data = bytearray(data)
             hdr = struct.unpack("<LHHHLLH", data[:20])
             # Check the checksum.
             if struct.unpack("<H", data[-2:])[0] != calcCrc(
@@ -290,6 +290,10 @@ class PCAPParser:
         pcaprechdr = struct.unpack(byteorder + "LLLL", pcaprechdr)
         pcaptime = pcaprechdr[0] + pcaprechdr[1]/1000000.
         packet_offset = pcaprechdr[2]
+        if not packet_offset:
+          # Zero-length data; continue reading the next packet.
+          # This may also happen if the file is damaged and ends in a stream of zeros.
+          continue
 
         # Skip over Ethernet header. It may have 4 additional bytes if it is a VLAN tagged frame.
         etherhdr = f.read(etherhdrlen)
@@ -501,14 +505,14 @@ reader = PCAPParser()
 for filename in sys.argv[1:]:
   eprint("Reading from %s" % filename)
   if filename == "-":
-    f = sys.stdin
+    f = sys.stdin.buffer
   else:
     f = open(filename, 'rb')
   byteiterator = reader.get_data_from_pcap(f)
   for hdr, msg in parser.get_messages(byteiterator):
     if hdr[6] == 0x0503:
       eprint("Setting new 0503 key")
-      db.execute("UPDATE live_update SET last_0503 = %s", (msg,))
+      db.execute("UPDATE live_update SET last_0503 = %s", (bytes(msg),))
       db.commit()
     if hdr[6] != 0x0500:
       continue

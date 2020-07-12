@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #
-# Copyright (C) 2019 Jerrythafast
+# Copyright (C) 2020 Jerrythafast
 #
 # This file is part of se-logger, which captures telemetry data from
 # the TCP traffic of SolarEdge PV inverters.
@@ -55,7 +55,6 @@ for filename in (x for x in sys.argv[1:] for x in iglob(x)):
       break
     packets += 1
     if data[pos+18] + (data[pos+19] << 8) in (0x0503, 0x003d):
-
       encrypted += 1
 
 if not packets:
